@@ -1,0 +1,5 @@
+DB_HOST=local_name 
+DB_NAME=database_name
+DB_USER=user_name
+DB_PASSWORD=password
+DB_PORT=3307

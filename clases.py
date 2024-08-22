@@ -11,8 +11,11 @@ Manejar errores con bloques try-except para validar entradas y gestionar excepci
 Persistir los datos en archivo JSON.
 ##############################'''
 
-from datetime import (date, timedelta, datetime)
+import mysql.connector
 import json
+from mysql.connector import Error
+from decouple import config
+from datetime import (date, timedelta)
 
 class Tarea:
     def __init__(self, titulo, descripcion, f_vencimiento, estado):
@@ -168,9 +171,28 @@ class TareaSimple(Tarea):
 
 
 class Gestion():
-    def __init__(self, archivo):
-        self.archivo = archivo
+    def __init__(self):
+        self.host = config('DB_HOST')
+        self.name = config('DB_NAME')
+        self.user = config('DB_USER')
+        self.password = config('DB_PASSWORD')
+        self.port = config('DB_PORT')
 
+    def connect(self):
+        try:
+            connection = mysql.connector.connect(
+                host=self.host,
+                database=self.database,
+                user=self.user,
+                password=self.password,
+                port=self.port
+            )
+            if connection.is_connected():
+                return connection
+            
+        except Error as e:
+            print(f"Ocurrio un error en la conexion: {e}")
+##
     def leer_datos(self):
         try:
             with open(self.archivo, 'r') as file:
@@ -181,7 +203,7 @@ class Gestion():
             raise Exception(f'Error al leer datos del archivo: {error}')
         else:
             return datos
-
+##
     def guardar_datos(self, datos):
         try:
             with open(self.archivo, 'w') as file:
@@ -193,26 +215,67 @@ class Gestion():
 
     def crear_tarea(self, tarea):
         try:
-            datos = self.leer_datos()
-            if tarea.titulo in datos.keys():
-                raise Exception(f"Ya existe una tarea con el mismo titulo '{tarea.titulo}'")
-            else:
-                datos[tarea.titulo] = tarea.to_dict()
-                self.guardar_datos(datos)
-                print(f"La tarea '{tarea.titulo}' se creó correctamente.")
+            connection = self.connect()
+            if connection:
+                with connection.cursor() as cursor:
+                    cursor.execute('select titulo from tarea where titulo = %s', (tarea.titulo,))
+                    if cursor.fetchone():
+                        print("Ya existe una tarea con el mismo titulo")
+                        return
+                    
+                    query = '''
+                    insert into tarea (titulo, descripcion, f_vencimiento, estado) values (%s, %s, %s, %s,)
+                    '''
+                    cursor.execute(query, (tarea.titulo, tarea.descripcion, tarea.f_vencimiento, tarea.estado))
+
+                    if isinstance(tarea, TareaSimple):
+
+                        query = '''
+                        insert into tareasimple (titulo, importancia) values (%s, %s,)
+                        '''
+                        cursor.execute(query, (tarea.titulo, tarea.importancia))
+                    elif isinstance(tarea, TareaRecurrente):
+                        query = '''
+                        insert into tarearecurrente (titulo, recurrencia) values (%s, %s,)
+                        '''
+                        cursor.execute(query, (tarea.titulo, tarea.recurrencia))
+                    
+                    connection.commit()
+                    print(f"La tarea '{tarea.titulo}' se creó correctamente.")
+
         except Exception as e:
             raise Exception(f"{e}.")          
 
     def leer_una_tarea(self, titulo):
         try:
-            datos = self.leer_datos()
+            connection = self.connect()
+            if connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute('''
+                    select * from tarea t join tareasimple ts on t.titulo=ts.tarea
+                    where titulo="%s";
+                    ''', (titulo,))
+                    if cursor.fetchone():
+                        tarea = cursor.fetchone()
+                    else:
+                        cursor.execute('''
+                        select * from tarea t join tarearecurrente ts on t.titulo=ts.tarea
+                        where titulo="%s";
+                        ''', (titulo,)) 
+                        tarea = cursor.fetchone()
+                    
+                    if not cursor.fetchone():
+                        print(f"La tarea {titulo} no existe")
+                    
+                    return tarea
 
-            if titulo in datos.keys():
-                return datos[titulo]
-            else: 
-                raise Exception(f"No existe ninguna tarea con el titulo '{titulo}'")
-        except Exception as e:
+
+        except Error as e:
             raise Exception(f"Surgió un error en la lectura: {e}")
+        
+        finally:
+            if connection.is_connected:
+                connection.close()
 
     def actualizar_tarea(self, atributo, nuevo_valor, tarea):
         try:

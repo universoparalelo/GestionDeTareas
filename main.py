@@ -213,8 +213,7 @@ def mostrar_tareas(archivo):
 
 
 if __name__ == '__main__':
-    archivo_tareas = 'laboratorioPOO/tareas_db.json'
-    gestion = Gestion(archivo_tareas)
+    gestion = Gestion()
 
     while True:
         limpiar_pantalla()
