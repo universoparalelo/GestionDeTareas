@@ -143,8 +143,8 @@ def actualizar_tarea(archivo):
 
 
 def leer_una_tarea(archivo):
-    b_titulo = input("Escriba un titulo: ").strip()
-    tarea = archivo.leer_una_tarea(b_titulo)
+    titulo = input("Escriba un titulo: ").strip()
+    tarea = archivo.leer_una_tarea(titulo)
 
     if tarea:
         print("===========================")
@@ -159,7 +159,7 @@ def leer_una_tarea(archivo):
         print("===========================")
         
     else:
-        print(f"No se encontró ninguna tarea con el titulo '{b_titulo}'")
+        print(f"No se encontró ninguna tarea con el titulo '{titulo}'")
 
     input("Presiona enter para continuar...") 
 
@@ -173,11 +173,11 @@ def eliminar_tarea(archivo):
     print("===========================")
     input("Presiona enter para continuar...") 
 
-
+#
 def mostrar_tareas(archivo):
     opt = menu_para_mostrar()
     if opt == '4':
-        datos = archivo.leer_datos()
+        datos = archivo.leer_datos() # va a tirar error
     else:
         datos = archivo.leer_segun_fecha(opt)
     cont = 1
@@ -185,28 +185,28 @@ def mostrar_tareas(archivo):
     print("=======( Mostrando tareas )======")
     print("Tarea | Fecha de vencimiento | Estado | Importancia/Recurrencia")
     for tarea in datos:
-        if datos[tarea].get('importancia'):
+        if tarea.get('importancia'):
             print(f"-------------({cont})-----------------")
-            print(f"{datos[tarea]['titulo']} | {datos[tarea]['f_vencimiento']} | {datos[tarea]['estado']} | {datos[tarea]['importancia']}")
+            print(f"{tarea['titulo']} | {tarea['f_vencimiento']} | {tarea['estado']} | {tarea['importancia']}")
             cont += 1
         else:
             if opt == '1': days = 1
             elif opt == '2': days = 7
             elif opt == '3': days = 30
             else: 
-                days = date.fromisoformat(datos[tarea]['f_vencimiento']) - date.today()
+                days = date.fromisoformat(tarea['f_vencimiento']) - date.today()
                 days = days.days
 
-            f_vencimiento = date.fromisoformat(datos[tarea]['f_vencimiento'])
+            f_vencimiento = date.fromisoformat(tarea['f_vencimiento'])
             f_limite = date.today() + timedelta(days=days)
             cont_int = 1
 
             while (f_vencimiento <= f_limite) and (cont_int != 5):
                 print(f"-------------({cont})-------------")
-                print(f"{datos[tarea]['titulo']} | {f_vencimiento} | {datos[tarea]['estado']} | {datos[tarea]['recurrencia']}")
+                print(f"{tarea['titulo']} | {f_vencimiento} | {tarea['estado']} | {tarea['recurrencia']}")
                 cont += 1
                 cont_int += 1
-                f_vencimiento += timedelta(days=int(datos[tarea]['recurrencia']))
+                f_vencimiento += timedelta(days=int(tarea['recurrencia']))
     
     print("=============================")
     input("Presiona enter para continuar...") 

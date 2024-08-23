@@ -10,13 +10,13 @@ create table Tarea(
 );
 
 create table TareaSimple(
-	titulo varchar(30) primary key,
+	tarea varchar(30) primary key,
     importancia varchar(10) not null,
-    foreign key(titulo) references tarea(titulo)
+    foreign key(tarea) references tarea(titulo)
 );
 
 create table TareaRecurrente(
-	titulo varchar(30) primary key,
+	tarea varchar(30) primary key,
     recurrencia int not null,
-    foreign key(titulo) references tarea(titulo)
+    foreign key(tarea) references tarea(titulo)
 );

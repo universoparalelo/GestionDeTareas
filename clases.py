@@ -178,40 +178,37 @@ class Gestion():
         self.password = config('DB_PASSWORD')
         self.port = config('DB_PORT')
 
+
     def connect(self):
         try:
             connection = mysql.connector.connect(
-                host=self.host,
-                database=self.database,
-                user=self.user,
-                password=self.password,
-                port=self.port
+                user=self.user, password=self.password, host=self.host,
+                                   database=self.name, port=self.port
             )
             if connection.is_connected():
                 return connection
             
         except Error as e:
             print(f"Ocurrio un error en la conexion: {e}")
-##
+
     def leer_datos(self):
         try:
-            with open(self.archivo, 'r') as file:
-                datos = json.load(file)
-        except FileNotFoundError:
-            return {}
-        except Exception as error:
-            raise Exception(f'Error al leer datos del archivo: {error}')
-        else:
-            return datos
-##
-    def guardar_datos(self, datos):
-        try:
-            with open(self.archivo, 'w') as file:
-                json.dump(datos, file, indent=4)
-        except IOError as error:
-            print(f'Error al intentar guardar los datos en {self.archivo}: {error}')
-        except Exception as error:
-            print(f'Error inesperado: {error}')
+            connection = self.connect()
+            if connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    cursor.execute('''
+                        select * from tarea natural join tareasimple union
+                        select * from tarea natural join tarearecurrente''')
+                    tareas = cursor.fetchall()
+
+                    return tareas
+            
+        except Error as e:
+            raise Exception(f"Ocurrió un error en la eliminacion: {e}")
+        
+        finally:
+            if connection.is_connected():
+                connection.close()
 
     def crear_tarea(self, tarea):
         try:
@@ -224,19 +221,19 @@ class Gestion():
                         return
                     
                     query = '''
-                    insert into tarea (titulo, descripcion, f_vencimiento, estado) values (%s, %s, %s, %s,)
+                    insert into tarea (titulo, descripcion, f_vencimiento, estado) values (%s, %s, %s, %s)
                     '''
                     cursor.execute(query, (tarea.titulo, tarea.descripcion, tarea.f_vencimiento, tarea.estado))
 
                     if isinstance(tarea, TareaSimple):
 
                         query = '''
-                        insert into tareasimple (titulo, importancia) values (%s, %s,)
+                        insert into tareasimple (titulo, importancia) values (%s, %s)
                         '''
                         cursor.execute(query, (tarea.titulo, tarea.importancia))
                     elif isinstance(tarea, TareaRecurrente):
                         query = '''
-                        insert into tarearecurrente (titulo, recurrencia) values (%s, %s,)
+                        insert into tarearecurrente (titulo, recurrencia) values (%s, %s)
                         '''
                         cursor.execute(query, (tarea.titulo, tarea.recurrencia))
                     
@@ -244,7 +241,11 @@ class Gestion():
                     print(f"La tarea '{tarea.titulo}' se creó correctamente.")
 
         except Exception as e:
-            raise Exception(f"{e}.")          
+            raise Exception(f"{e}.")
+
+        finally:
+            if connection.is_connected:
+                connection.close()        
 
     def leer_una_tarea(self, titulo):
         try:
@@ -252,20 +253,18 @@ class Gestion():
             if connection:
                 with connection.cursor(dictionary=True) as cursor:
                     cursor.execute('''
-                    select * from tarea t join tareasimple ts on t.titulo=ts.tarea
-                    where titulo="%s";
+                    select * from tarea t natural join tareasimple ts
+                    where titulo=%s;
                     ''', (titulo,))
-                    if cursor.fetchone():
-                        tarea = cursor.fetchone()
+                    tarea = cursor.fetchone()
+                    if tarea:
+                        return tarea
                     else:
                         cursor.execute('''
-                        select * from tarea t join tarearecurrente ts on t.titulo=ts.tarea
-                        where titulo="%s";
+                        select * from tarea t natural join tarearecurrente ts
+                        where titulo=%s;
                         ''', (titulo,)) 
                         tarea = cursor.fetchone()
-                    
-                    if not cursor.fetchone():
-                        print(f"La tarea {titulo} no existe")
                     
                     return tarea
 
@@ -279,47 +278,94 @@ class Gestion():
 
     def actualizar_tarea(self, atributo, nuevo_valor, tarea):
         try:
-            datos = self.leer_datos()
+            connection = self.connect()
+            if connection.is_connected():
+                with connection.cursor() as cursor:
 
-            if tarea['titulo'] in datos.keys():
-                datos[tarea['titulo']][atributo] = nuevo_valor
-                self.guardar_datos(datos)
-                print(f"Tarea '{tarea['titulo']}' actualizada correctamente")
-            else:
-                print("No se encontró la tarea")
-        except Exception as e:
+                    if atributo == 'importancia':
+                        cursor.execute('''
+                            UPDATE tareasimple SET importancia = %s
+                            WHERE titulo = %s
+                        ''', (nuevo_valor, tarea['titulo']))
+                        verificacion = cursor.rowcount
+                    elif atributo == 'recurrencia':
+                        cursor.execute('''
+                        UPDATE tarearecurrente SET recurrencia = %s
+                        WHERE titulo = %s
+                        ''', (nuevo_valor, tarea['titulo']))
+                        verificacion = cursor.rowcount
+                    else:
+                        sql = f"UPDATE tarea SET {atributo} = %s WHERE titulo = %s"
+                        cursor.execute(sql, (nuevo_valor, tarea['titulo']))
+                        verificacion = cursor.rowcount
+
+
+                    connection.commit()
+
+                    if verificacion == 0:
+                        print("No se encontró la tarea")
+                    else:
+                        print(f"Tarea '{tarea['titulo']}' actualizada correctamente")
+
+        except Error as e:
             raise Exception(f"Ocurrió un error en la actualización: {e}")
+        
+        finally:
+            if connection.is_connected():
+                connection.close()
 
     def eliminar_tarea(self, tarea):
         try:
-            datos = self.leer_datos()
+            connection = self.connect()
+            if connection:
+                with connection.cursor() as cursor:
+                    cursor.execute('''select * from tarea where titulo=%s''', (tarea,))
+                    if cursor.fetchone():
+                        cursor.execute('''delete from tarea where titulo=%s''', (tarea,))
+                        if cursor.rowcount == 1:
+                            connection.commit()
+                            print(f"Tarea '{tarea}' eliminada correctamente")
+                    else:
+                        print(f"No se encontro la tarea '{tarea}'")
             
-            if tarea in datos.keys():
-                del datos[tarea]
-                self.guardar_datos(datos)
-                print(f"Tarea '{tarea}' eliminada correctamente")
-            else:
-                print(f"No se encontro la tarea '{tarea}'")
-        except Exception as e:
+        except Error as e:
             raise Exception(f"Ocurrió un error en la eliminacion: {e}")
+        
+        finally:
+            if connection.is_connected():
+                connection.close()
 
     def leer_segun_fecha(self, f_limite):
         try:
-            datos = self.leer_datos()
-            if f_limite == '1':
-                days = 0
-            elif f_limite == '2':
-                days = 7
-            elif f_limite == '3':
-                days = 30
-            else:
-                print("Opción inválida.")
+            connection = self.connect()
+            if connection:
+                with connection.cursor(dictionary=True) as cursor:
+                    if f_limite == '1':
+                        days = 0
+                    elif f_limite == '2':
+                        days = 7
+                    elif f_limite == '3':
+                        days = 30
+                    else:
+                        print("Opción inválida.")
+
+                    cursor.execute('''
+                    select * from tarea natural join tareasimple
+                    where f_vencimiento >= DATE(NOW()) 
+	                    and f_vencimiento <= DATE_ADD( DATE(NOW()), INTERVAL %s DAY )
+                                   union
+                    select * from tarea natural join tarearecurrente 
+                    where f_vencimiento >= DATE(NOW()) 
+                        and f_vencimiento <= DATE_ADD( DATE(NOW()), INTERVAL %s DAY );
+                    ''', (days,days))
+
+                    datos = cursor.fetchall()
+                    print(datos)
+                    return datos
             
-            nuevos_datos = {}
-            for tarea in datos:
-                if date.fromisoformat(datos[tarea]['f_vencimiento']) - date.today() <= timedelta(days=days):
-                    nuevos_datos[tarea] = datos[tarea]
-            
-            return nuevos_datos
-        except Exception as e:
+        except Error as e:
             raise Exception(f"{e}")
+        
+        finally:
+            if connection.is_connected():
+                connection.close()
