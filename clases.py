@@ -17,6 +17,8 @@ from mysql.connector import Error
 from decouple import config
 from datetime import (date, timedelta)
 
+config.encoding = 'cp1251'
+
 class Tarea:
     def __init__(self, titulo, descripcion, f_vencimiento, estado):
         self.__titulo = self.validarTitulo(titulo)
