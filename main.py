@@ -2,7 +2,9 @@ from clases import (TareaRecurrente, TareaSimple, Gestion)
 from datetime import(date, timedelta)
 import os
 import platform
+from colorama import (init, Fore)
 
+init(autoreset=True)
 
 def limpiar_pantalla():
     print(platform.system())
@@ -13,15 +15,18 @@ def limpiar_pantalla():
 
 
 def menu_para_mostrar():
+    print(Fore.GREEN + "===========================")
     print("1. Tareas del dia")
     print("2. Tareas de la semana")
     print("3. Tareas del mes")
     print("4. Todas las tareas")
+    print(Fore.GREEN + "===========================")
     return input("Elija una opcion(1-4): ").strip()
 
 
+
 def menu_actualizacion(tarea):
-    print("========( Actualizacion )==========")
+    print(Fore.GREEN + "========( Actualizacion )==========")
     print("1. Titulo - 2. Descripcion - 3. Fecha de vencimiento - 4. Estado", end="")
     if tarea.get('importancia'):
         print(" - 5. Importancia")
@@ -81,7 +86,7 @@ def cambiar_tarea(archivo, tarea, atributo):
 
 
 def menu():
-    print("========( Bienvenidx )=========")
+    print(Fore.GREEN + "========( Bienvenidx )=========")
     print("1. Crear una tarea simple")
     print("2. Crear una tarea recurrente")
     print("3. Leer una tarea")
@@ -89,12 +94,12 @@ def menu():
     print("5. Eliminar una tarea")
     print("6. Ver todas las tareas")
     print("7. Salir")
-    print("===========================")
+    print(Fore.GREEN + "===========================")
 
 
 def crear_tarea(archivo, tipo_tarea):
     try:
-        print("===========================")
+        print(Fore.GREEN + "===========================")
         print("Creando una tarea...")
         titulo = input("Titulo: ").strip()
         descripcion = input("Descripcion: ").strip()
@@ -112,8 +117,8 @@ def crear_tarea(archivo, tipo_tarea):
     except Exception as e:
         print(f"{e}")
         
-    print("===========================")
-    input("Presiona enter para continuar...") 
+    print(Fore.GREEN + "===========================")
+    input(Fore.GREEN + "Presiona enter para continuar...") 
 
 
 def actualizar_tarea(archivo):
@@ -139,7 +144,7 @@ def actualizar_tarea(archivo):
     except Exception as e:
         print(f"{e}")
 
-    input("Presiona enter para continuar...") 
+    input(Fore.GREEN + "Presiona enter para continuar...") 
 
 
 def leer_una_tarea(archivo):
@@ -147,7 +152,7 @@ def leer_una_tarea(archivo):
     tarea = archivo.leer_una_tarea(titulo)
 
     if tarea:
-        print("===========================")
+        print(Fore.GREEN + "===========================")
         print(f"Tarea: {tarea['titulo']}")
         print(f"Descripcion: {tarea['descripcion']}")
         print(f"Fecha vencimiento: {tarea['f_vencimiento']}")
@@ -156,7 +161,7 @@ def leer_una_tarea(archivo):
             print(f"Importancia: {tarea['importancia']}")
         else:
             print(f"Recurrencia: {tarea['recurrencia']}")
-        print("===========================")
+        print(Fore.GREEN + "===========================")
         
     else:
         print(f"No se encontró ninguna tarea con el titulo '{titulo}'")
@@ -165,28 +170,28 @@ def leer_una_tarea(archivo):
 
 
 def eliminar_tarea(archivo):
-    print("===========================")
+    print(Fore.GREEN + "===========================")
 
     titulo = input("Escriba el titulo de la tarea: ")
     archivo.eliminar_tarea(titulo)
 
-    print("===========================")
-    input("Presiona enter para continuar...") 
+    print(Fore.GREEN + "===========================")
+    input(Fore.GREEN + "Presiona enter para continuar...") 
 
-#
+
 def mostrar_tareas(archivo):
     opt = menu_para_mostrar()
     if opt == '4':
-        datos = archivo.leer_datos() # va a tirar error
+        datos = archivo.leer_datos() 
     else:
         datos = archivo.leer_segun_fecha(opt)
     cont = 1
 
-    print("=======( Mostrando tareas )======")
+    print(Fore.GREEN + "=======( Mostrando tareas )======")
     print("Tarea | Fecha de vencimiento | Estado | Importancia/Recurrencia")
     for tarea in datos:
         if tarea.get('importancia'):
-            print(f"-------------({cont})-----------------")
+            print(Fore.MAGENTA + f"-------------({cont})-----------------")
             print(f"{tarea['titulo']} | {tarea['f_vencimiento']} | {tarea['estado']} | {tarea['importancia']}")
             cont += 1
         else:

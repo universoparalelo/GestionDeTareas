@@ -362,7 +362,6 @@ class Gestion():
                     ''', (days,days))
 
                     datos = cursor.fetchall()
-                    print(datos)
                     return datos
             
         except Error as e:
